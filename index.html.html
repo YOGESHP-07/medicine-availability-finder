@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Medicine Availability Finder</title>
+<style>
+  :root { --ink:#18302b; --muted:#64736e; --line:#dce6e1; --paper:#f5f8f6; --white:#fff; --green:#176b50; --green2:#e6f4ed; --red:#a83232; --amber:#8a5a00; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Arial,Helvetica,sans-serif; background:var(--paper); color:var(--ink); }
+  header { background:var(--white); border-bottom:1px solid var(--line); padding:22px 18px; }
+  .header-inner, main { max-width:1050px; margin:auto; }
+  .brand { font-size:25px; font-weight:750; letter-spacing:-.5px; }
+  .brand span { color:var(--green); }
+  header p { margin:7px 0 0; color:var(--muted); }
+  main { padding:24px 16px 40px; }
+  .notice { border:1px solid #e7d7a8; background:#fff9e8; color:#674b0b; border-radius:10px; padding:12px 14px; margin-bottom:18px; line-height:1.45; font-size:14px; }
+  .tabs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px; }
+  .tab { background:#fff; border:1px solid var(--line); border-radius:8px; padding:11px 15px; cursor:pointer; font-weight:700; color:var(--ink); }
+  .tab.active { background:var(--green); border-color:var(--green); color:#fff; }
+  .panel { display:none; background:#fff; border:1px solid var(--line); border-radius:14px; padding:22px; box-shadow:0 4px 18px #153d2b0a; }
+  .panel.active { display:block; }
+  h2 { margin:0 0 7px; font-size:22px; }
+  .sub { margin:0 0 20px; color:var(--muted); line-height:1.5; }
+  .search-row { display:flex; gap:10px; }
+  input, select { width:100%; border:1px solid #cbd8d1; border-radius:8px; padding:12px 13px; font:inherit; background:#fff; color:var(--ink); }
+  input:focus, select:focus { outline:2px solid #a7d8c1; border-color:var(--green); }
+  button.primary { background:var(--green); color:#fff; border:1px solid var(--green); border-radius:8px; padding:12px 18px; font:inherit; font-weight:700; cursor:pointer; white-space:nowrap; }
+  button.secondary { background:#fff; color:var(--ink); border:1px solid #cbd8d1; border-radius:8px; padding:10px 13px; font:inherit; cursor:pointer; }
+  button:hover { filter:brightness(.97); }
+  .filters { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px; }
+  .results-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:24px 0 12px; }
+  .count { color:var(--muted); font-size:14px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; }
+  .card { border:1px solid var(--line); border-radius:11px; padding:16px; background:#fff; }
+  .card h3 { margin:0 0 6px; font-size:17px; }
+  .location { color:var(--muted); margin-bottom:12px; font-size:14px; }
+  .price { font-size:20px; font-weight:750; margin:9px 0; }
+  .badge { display:inline-block; border-radius:20px; padding:5px 9px; font-size:12px; font-weight:700; }
+  .available { color:#155b40; background:#e2f5e9; }
+  .low { color:var(--amber); background:#fff1cf; }
+  .out { color:var(--red); background:#fde8e8; }
+  .empty { border:1px dashed #cbd8d1; border-radius:10px; padding:25px; text-align:center; color:var(--muted); line-height:1.5; }
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  label { display:block; font-size:13px; font-weight:700; margin-bottom:7px; }
+  .field { min-width:0; }
+  .form-actions { display:flex; gap:10px; margin-top:18px; flex-wrap:wrap; }
+  .status { margin-top:13px; font-size:14px; line-height:1.4; }
+  .success { color:#155b40; }
+  .error { color:var(--red); }
+  .inventory-table-wrap { overflow-x:auto; margin-top:18px; }
+  table { border-collapse:collapse; width:100%; font-size:14px; }
+  th,td { padding:11px 10px; border-bottom:1px solid var(--line); text-align:left; }
+  th { background:#f7faf8; }
+  .small-btn { padding:6px 9px!important; font-size:12px!important; margin:2px; }
+  footer { text-align:center; color:var(--muted); font-size:13px; padding:10px 16px 28px; }
+  @media(max-width:600px) { .search-row { flex-direction:column; } .filters,.form-grid { grid-template-columns:1fr; } .panel { padding:16px; } .brand { font-size:21px; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <div class="brand">Medicine <span>Availability Finder</span></div>
+    <p>Search medicine stock across pharmacies, or add your own inventory data.</p>
+  </div>
+</header>
+<main>
+  <div class="notice"><strong>Prototype note:</strong> This website uses sample data stored in this browser. It does not connect to real pharmacy systems, so availability and prices are only as accurate as the data entered here. Do not use it to make urgent medical decisions.</div>
+  <nav class="tabs" aria-label="Main navigation">
+    <button class="tab active" data-tab="searchPanel">Find medicine</button>
+    <button class="tab" data-tab="managePanel">Add / update stock</button>
+    <button class="tab" data-tab="inventoryPanel">View inventory</button>
+  </nav>
+
+  <section id="searchPanel" class="panel active">
+    <h2>Find a medicine</h2>
+    <p class="sub">Enter a medicine name to see matching pharmacies, price, location and available quantity.</p>
+    <form id="searchForm">
+      <div class="search-row">
+        <input id="searchName" type="search" placeholder="Example: Paracetamol" aria-label="Medicine name">
+        <button class="primary" type="submit">Search</button>
+        <button class="secondary" type="button" id="showAll">Show all</button>
+      </div>
+      <div class="filters">
+        <div class="field">
+          <label for="locationFilter">Filter by location (optional)</label>
+          <input id="locationFilter" type="text" placeholder="Example: Tambaram">
+        </div>
+        <div class="field">
+          <label for="stockFilter">Availability</label>
+          <select id="stockFilter">
+            <option value="available">In stock only</option>
+            <option value="all">Show out-of-stock too</option>
+          </select>
+        </div>
+      </div>
+    </form>
+    <div class="results-head"><strong>Search results</strong><span id="resultCount" class="count"></span></div>
+    <div id="results" class="cards"></div>
+  </section>
+
+  <section id="managePanel" class="panel">
+    <h2>Add or update pharmacy stock</h2>
+    <p class="sub">Enter pharmacy and medicine details. If the same pharmacy and medicine already exist, the record will be updated.</p>
+    <form id="stockForm">
+      <div class="form-grid">
+        <div class="field"><label for="pharmacyName">Pharmacy name *</label><input id="pharmacyName" required placeholder="Example: City Pharmacy"></div>
+        <div class="field"><label for="pharmacyLocation">Location / address *</label><input id="pharmacyLocation" required placeholder="Example: Tambaram"></div>
+        <div class="field"><label for="medicineName">Medicine name *</label><input id="medicineName" required placeholder="Example: Paracetamol"></div>
+        <div class="field"><label for="medicinePrice">Price per unit (₹) *</label><input id="medicinePrice" required type="number" min="0" step="0.01" placeholder="20.00"></div>
+        <div class="field"><label for="medicineQuantity">Available quantity *</label><input id="medicineQuantity" required type="number" min="0" step="1" placeholder="50"></div>
+      </div>
+      <div class="form-actions">
+        <button class="primary" type="submit">Save stock</button>
+        <button class="secondary" type="reset">Clear form</button>
+      </div>
+      <div id="formStatus" class="status" role="status"></div>
+    </form>
+  </section>
+
+  <section id="inventoryPanel" class="panel">
+    <h2>Inventory records</h2>
+    <p class="sub">All saved records currently stored in this browser.</p>
+    <div class="form-actions">
+      <button class="secondary" id="exportCsv" type="button">Export CSV</button>
+      <button class="secondary" id="resetDemo" type="button">Reset to sample data</button>
+    </div>
+    <div id="inventoryTable" class="inventory-table-wrap"></div>
+  </section>
+</main>
+<footer>Medicine Availability Finder · Student project prototype</footer>
+
+<script>
+const STORAGE_KEY = "medicineFinderInventoryV1";
+const sampleData = [
+  {id:1, pharmacy:"City Pharmacy", location:"Tambaram", medicine:"Paracetamol", price:20, quantity:50},
+  {id:2, pharmacy:"Health Care Pharmacy", location:"Chromepet", medicine:"Paracetamol", price:22, quantity:20},
+  {id:3, pharmacy:"MedPlus Pharmacy", location:"Pallavaram", medicine:"Paracetamol", price:21, quantity:0},
+  {id:4, pharmacy:"City Pharmacy", location:"Tambaram", medicine:"Cetirizine", price:15, quantity:0},
+  {id:5, pharmacy:"Health Care Pharmacy", location:"Chromepet", medicine:"Cetirizine", price:16, quantity:30},
+  {id:6, pharmacy:"MedPlus Pharmacy", location:"Pallavaram", medicine:"Amoxicillin", price:40, quantity:15}
+];
+let inventory = loadInventory();
+
+function loadInventory() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : [...sampleData];
+  } catch (e) { return [...sampleData]; }
+}
+function saveInventory() { localStorage.setItem(STORAGE_KEY, JSON.stringify(inventory)); }
+function esc(value) {
+  return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function money(n) { return "₹" + Number(n).toFixed(2); }
+
+document.querySelectorAll(".tab").forEach(btn => btn.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b === btn));
+  document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.id === btn.dataset.tab));
+  if (btn.dataset.tab === "inventoryPanel") renderInventory();
+}));
+
+function searchInventory(showAll = false) {
+  const term = document.getElementById("searchName").value.trim().toLowerCase();
+  const loc = document.getElementById("locationFilter").value.trim().toLowerCase();
+  const showOut = document.getElementById("stockFilter").value === "all";
+  let rows = inventory.filter(r =>
+    (!term || r.medicine.toLowerCase().includes(term)) &&
+    (!loc || r.location.toLowerCase().includes(loc) || r.pharmacy.toLowerCase().includes(loc)) &&
+    (showAll || showOut || r.quantity > 0)
+  );
+  rows.sort((a,b) => a.medicine.localeCompare(b.medicine) || a.pharmacy.localeCompare(b.pharmacy));
+  document.getElementById("resultCount").textContent = rows.length + (rows.length === 1 ? " result" : " results");
+  const target = document.getElementById("results");
+  if (!rows.length) {
+    target.innerHTML = '<div class="empty">No matching stock records found.<br>Try another medicine/location, or add stock in “Add / update stock”.</div>';
+    return;
+  }
+  target.innerHTML = rows.map(r => {
+    const badge = r.quantity <= 0 ? '<span class="badge out">Out of stock</span>' :
+      r.quantity <= 5 ? '<span class="badge low">Low stock</span>' :
+      '<span class="badge available">In stock</span>';
+    return `<article class="card">
+      <h3>${esc(r.medicine)}</h3>
+      ${badge}
+      <div class="price">${money(r.price)}</div>
+      <strong>${esc(r.pharmacy)}</strong>
+      <div class="location">📍 ${esc(r.location)}</div>
+      <div>Quantity available: <strong>${Number(r.quantity)}</strong></div>
+    </article>`;
+  }).join("");
+}
+document.getElementById("searchForm").addEventListener("submit", e => { e.preventDefault(); searchInventory(); });
+document.getElementById("showAll").addEventListener("click", () => {
+  document.getElementById("searchName").value = "";
+  document.getElementById("locationFilter").value = "";
+  document.getElementById("stockFilter").value = "all";
+  searchInventory(true);
+});
+document.getElementById("locationFilter").addEventListener("input", () => searchInventory());
+document.getElementById("stockFilter").addEventListener("change", () => searchInventory());
+
+document.getElementById("stockForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const pharmacy = document.getElementById("pharmacyName").value.trim();
+  const location = document.getElementById("pharmacyLocation").value.trim();
+  const medicine = document.getElementById("medicineName").value.trim();
+  const price = Number(document.getElementById("medicinePrice").value);
+  const quantity = Number(document.getElementById("medicineQuantity").value);
+  const status = document.getElementById("formStatus");
+  if (!pharmacy || !location || !medicine || !Number.isFinite(price) || price < 0 || !Number.isInteger(quantity) || quantity < 0) {
+    status.className = "status error";
+    status.textContent = "Please check the fields. Price must be 0 or more, and quantity must be a whole number of 0 or more.";
+    return;
+  }
+  const existing = inventory.find(r => r.pharmacy.toLowerCase() === pharmacy.toLowerCase() &&
+    r.location.toLowerCase() === location.toLowerCase() &&
+    r.medicine.toLowerCase() === medicine.toLowerCase());
+  if (existing) {
+    existing.price = price;
+    existing.quantity = quantity;
+  } else {
+    inventory.push({id: Date.now(), pharmacy, location, medicine, price, quantity});
+  }
+  saveInventory();
+  status.className = "status success";
+  status.textContent = existing ? "Stock record updated successfully." : "New stock record added successfully.";
+  e.target.reset();
+  searchInventory();
+  renderInventory();
+});
+function renderInventory() {
+  const target = document.getElementById("inventoryTable");
+  if (!inventory.length) { target.innerHTML = '<div class="empty">No inventory records.</div>'; return; }
+  target.innerHTML = `<table><thead><tr><th>Medicine</th><th>Pharmacy</th><th>Location</th><th>Price</th><th>Qty</th><th>Action</th></tr></thead><tbody>` +
+    inventory.map(r => `<tr><td>${esc(r.medicine)}</td><td>${esc(r.pharmacy)}</td><td>${esc(r.location)}</td><td>${money(r.price)}</td><td>${r.quantity}</td><td><button class="secondary small-btn" onclick="editRecord(${r.id})">Edit</button><button class="secondary small-btn" onclick="deleteRecord(${r.id})">Delete</button></td></tr>`).join("") +
+    `</tbody></table>`;
+}
+window.editRecord = function(id) {
+  const r = inventory.find(x => x.id === id);
+  if (!r) return;
+  document.getElementById("pharmacyName").value = r.pharmacy;
+  document.getElementById("pharmacyLocation").value = r.location;
+  document.getElementById("medicineName").value = r.medicine;
+  document.getElementById("medicinePrice").value = r.price;
+  document.getElementById("medicineQuantity").value = r.quantity;
+  document.querySelector('[data-tab="managePanel"]').click();
+  document.getElementById("formStatus").textContent = "Edit the values and save to update this record.";
+  document.getElementById("formStatus").className = "status";
+};
+window.deleteRecord = function(id) {
+  if (!confirm("Delete this inventory record?")) return;
+  inventory = inventory.filter(r => r.id !== id);
+  saveInventory(); renderInventory(); searchInventory();
+};
+document.getElementById("exportCsv").addEventListener("click", () => {
+  const rows = [["Medicine","Pharmacy","Location","Price","Quantity"], ...inventory.map(r => [r.medicine,r.pharmacy,r.location,r.price,r.quantity])];
+  const csv = rows.map(row => row.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(",")).join("\r\n");
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "medicine-inventory.csv"; a.click(); URL.revokeObjectURL(a.href);
+});
+document.getElementById("resetDemo").addEventListener("click", () => {
+  if (!confirm("Replace all current records with the original sample data?")) return;
+  inventory = [...sampleData]; saveInventory(); renderInventory(); searchInventory();
+});
+renderInventory();
+searchInventory();
+</script>
+</body>
+</html>
